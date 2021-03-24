@@ -126,6 +126,8 @@ class BP_NetDecoder:
         self.C_to_V_params_img = {}
         self.BP_layers = BP_layers
         self.xe_v_sumc = {}
+        # 准备一个数组来存放奇数层的输出
+        self.odd_layer_out = []
 
         # ---------- 构建稀疏转换 -------------
         # --------- 将参数放到数组中 ----------
@@ -267,7 +269,7 @@ class BP_NetDecoder:
         ex = tf.exp(x)
         return tf.log(tf.truediv(1 + ex, 1 - ex))
 
-    def multiple_bp_iteration(self, xe_v2c_pre_iter, xe_0):
+    def multiple_bp_iteration(self, xe_v2c_pre_iter, xe_0, llr_into_bp_net):
         """
         :param xe_v2c_pre_iter: (2040, 5000) ,xe_v2c_pre_iter 是上一轮的变量节点，即非初始化的变量节点
         :param H_sumC_to_V: (2040, 2040) 纵向排列调整为横向排列，同时横向更新
@@ -299,8 +301,10 @@ class BP_NetDecoder:
             xe_v_sumc = tf.multiply(self.atanh(xe_pd_modified), [2.0], name=format("xe_v_sumc_%d" % layer))
             xe_c_sumv = tf.add(xe_0, tf.sparse_tensor_dense_matmul(self.V_to_C_params[layer], xe_v_sumc), name=format("xe_c_sumv_%d" % layer))
             # 存储每轮迭代中的的校验节点 xe_v_sumc
+            self.odd_layer_out.append(
+                tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_v_sumc)))
 
-        return xe_v_sumc, xe_c_sumv  # xe_v_sumc 是输出层，xe_c_sumv 是这一轮BP的输出，下一轮的输入
+        return xe_v_sumc, xe_c_sumv  # xe_v_sumc 是每次完成迭代的输出层（校验节点），xe_c_sumv 是这一轮BP的输出，下一轮的输入
 
     def build_network(self):  # build the network for one BP iteration
         # 还需要构建一段由 u_coded_bits 和 SNR 到 llr 的网络。
@@ -338,10 +342,13 @@ class BP_NetDecoder:
         llr_into_bp_net = tf.Variable(np.ones([self.v_node_num, self.batch_size], dtype=np.float32), name="llr_into_bp_net")  # 建立了一个矩阵变量（576 * 5000)，576 是码元，5000是每次5000个码元为一个batch
         # xe_0 = tf.matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")  # 横向edge初始化(H_x_to_xe0:shape=(2040, 576), llr_into_bp_net:shape=(576, 5000) => (2040, 5000)
         xe_0 = tf.sparse_tensor_dense_matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")
+
+        self.odd_layer_out.append(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_0)))
+
         xe_v2c_pre_iter = tf.Variable(np.ones([self.num_all_edges, self.batch_size], dtype=np.float32), name="xe_v2c_pre_iter")  # the v->c messages of the previous iteration, shape=(2040, 5000)
         xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0, name="xe_v2c_pre_iter_assign")  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
 
-        xe_v_sumc, xe_c_sumv = self.multiple_bp_iteration(xe_v2c_pre_iter, xe_0)  # (2040, 5000), (2040, 2040), (2040, 2040), (2040, 5000)
+        xe_v_sumc, xe_c_sumv = self.multiple_bp_iteration(xe_v2c_pre_iter, xe_0, llr_into_bp_net)  # (2040, 5000), (2040, 2040), (2040, 2040), (2040, 5000)
         self.xe_v_sumc = xe_v_sumc
         # xe_v_sumc 是纵向排列的edge，xe_c_sumv 是横向排列的edge
         # 横向排列的edge正好是每轮BP的输出，而纵向排列的BP则是可以作为输出层的前一个数据层
