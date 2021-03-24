@@ -167,10 +167,35 @@ class BP_NetDecoder:
             return
         # -----------------带训练参数的BP译码网络的参数矩阵--------------
         else:  # 之后考虑为每个 H_sumC_to_V 和 H_sumV_to_C 单独进行变量随机化
-            # ---------改为 tf.Variable ----------
-            self.H_x_to_xe0 = tf.Variable(self.H_x_to_xe0, dtype=tf.float32, name="H_x_to_xe0")
-            # self.H_sumV_to_C = tf.Variable(self.H_sumV_to_C, dtype=tf.float32)
-            self.H_xe_v_sumc_to_y = tf.Variable(self.H_xe_v_sumc_to_y, dtype=tf.float32, name="H_xe_v_sumc_to_y")
+            # ---------改为 tf.Variable/tf.SparseTensor ----------
+            # 初始化 以及 输出层的转换矩阵也得可稀疏化、训练化
+            i, j = np.nonzero(self.H_x_to_xe0)
+            indices = []
+            for idx in range(len(i)):
+                tmp = [0, 0]
+                tmp[0] = i[idx]
+                tmp[1] = j[idx]
+                indices.append(tmp)
+            values = tf.Variable(np.ones(len(i)), dtype=tf.float32, name=format("v_to_c_sparse_var_begin"))
+            self.H_x_to_xe0 = tf.SparseTensor(indices=indices, values=values
+                                                            , dense_shape=self.H_x_to_xe0.shape)
+
+            i, j = np.nonzero(self.H_xe_v_sumc_to_y)
+            indices = []
+            for idx in range(len(i)):
+                tmp = [0, 0]
+                tmp[0] = i[idx]
+                tmp[1] = j[idx]
+                indices.append(tmp)
+            values = tf.Variable(np.ones(len(i)), dtype=tf.float32, name=format("v_to_c_sparse_var_end"))
+            self.H_xe_v_sumc_to_y = tf.SparseTensor(indices=indices, values=values
+                                                    , dense_shape=self.H_xe_v_sumc_to_y.shape)
+
+            # ------------- 原来的 -------------
+            # self.H_x_to_xe0 = tf.Variable(self.H_x_to_xe0, dtype=tf.float32, name="H_x_to_xe0")
+            # # self.H_sumV_to_C = tf.Variable(self.H_sumV_to_C, dtype=tf.float32)
+            # self.H_xe_v_sumc_to_y = tf.Variable(self.H_xe_v_sumc_to_y, dtype=tf.float32, name="H_xe_v_sumc_to_y")
+            # ----------------------------------
             self.llr_into_bp_net, self.xe_0, self.xe_v2c_pre_iter_assign, self.start_next_iteration, self.dec_out, self.logits, self.bp_out_llr = self.build_trained_bp_network()
         # -------------------------------------------------------------
         # -------------------------------------------------------------
@@ -277,6 +302,7 @@ class BP_NetDecoder:
             xe_pd_modified = tf.add(xe_product, xe_product_temp, name=format("xe_pd_modified_%d" % layer))
             xe_v_sumc = tf.multiply(self.atanh(xe_pd_modified), [2.0], name=format("xe_v_sumc_%d" % layer))
             xe_c_sumv = tf.add(xe_0, tf.sparse_tensor_dense_matmul(self.V_to_C_params[layer], xe_v_sumc), name=format("xe_c_sumv_%d" % layer))
+            # 存储每轮迭代中的的校验节点 xe_v_sumc
 
         return xe_v_sumc, xe_c_sumv  # xe_v_sumc 是输出层，xe_c_sumv 是这一轮BP的输出，下一轮的输入
 
@@ -314,7 +340,8 @@ class BP_NetDecoder:
         # BP initialization
         # llr_into_bp_net = tf.placeholder(dtype=tf.float32, shape=[self.v_node_num, self.batch_size], name="llr_into_bp_net_tensor")  # 整个BP网络的输入
         llr_into_bp_net = tf.Variable(np.ones([self.v_node_num, self.batch_size], dtype=np.float32), name="llr_into_bp_net")  # 建立了一个矩阵变量（576 * 5000)，576 是码元，5000是每次5000个码元为一个batch
-        xe_0 = tf.matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")  # 横向edge初始化(H_x_to_xe0:shape=(2040, 576), llr_into_bp_net:shape=(576, 5000) => (2040, 5000)
+        # xe_0 = tf.matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")  # 横向edge初始化(H_x_to_xe0:shape=(2040, 576), llr_into_bp_net:shape=(576, 5000) => (2040, 5000)
+        xe_0 = tf.sparse_tensor_dense_matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")
         xe_v2c_pre_iter = tf.Variable(np.ones([self.num_all_edges, self.batch_size], dtype=np.float32), name="xe_v2c_pre_iter")  # the v->c messages of the previous iteration, shape=(2040, 5000)
         xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0)  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
 
@@ -326,7 +353,9 @@ class BP_NetDecoder:
         # start_next_iteration = xe_v2c_pre_iter.assign(xe_c_sumv)
         start_next_iteration = 0
         # get the final marginal probability and decoded results
-        bp_out_llr = tf.add(llr_into_bp_net, tf.matmul(self.H_xe_v_sumc_to_y, xe_v_sumc))  # H_xe_sumc_to_y 是输出层的转换矩阵，不需要训练，xe_v_sumc 是纵向排列的edge
+        # bp_out_llr = tf.add(llr_into_bp_net, tf.matmul(self.H_xe_v_sumc_to_y, xe_v_sumc))  # H_xe_sumc_to_y 是输出层的转换矩阵，不需要训练，xe_v_sumc 是纵向排列的edge
+        bp_out_llr = tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_v_sumc))  # H_xe_sumc_to_y 是输出层的转换矩阵，不需要训练，xe_v_sumc 是纵向排列的edge
+
         # sigmoid_out = tf.sigmoid(tf.transpose(bp_out_llr))
         logits = tf.transpose(bp_out_llr)  # logits 替换上面的 sigmoid_out
         # sigmoid_out = tf.sigmoid(bp_out_llr)
