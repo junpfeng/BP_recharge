@@ -178,8 +178,12 @@ class BP_NetDecoder:
         # self.llr_assign = self.llr_into_bp_net.assign(tf.transpose(self.llr_into_bp_net))  # transpose the llr matrix to adapt to the matrix operation in BP net decoder.
 
         # self.cross_entropy = -tf.reduce_sum(self.llr_into_bp_net * tf.log(self.sigmoid_out), 1)  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
-        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.logits, name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
-        self.cross_entropy = tf.reduce_sum(self.cross_entropy)
+        self.slogits = tf.sigmoid(self.logits)
+        self.slabels = tf.sigmoid(self.labels)
+        # self.cross_entropy = -tf.reduce_sum(tf.multiply(tf.sigmoid(self.logits), tf.log(tf.sigmoid(self.labels))))
+        self.cross_entropy = -tf.reduce_sum(tf.add(tf.multiply(self.slabels, tf.log(self.slogits)), tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.slogits)))))
+#         self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.logits, name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
+#         self.cross_entropy = tf.reduce_sum(self.cross_entropy)
         self.train_step = tf.train.AdamOptimizer(1e-5).minimize(self.cross_entropy)
 
         self.sess = tf.Session(graph=tf.get_default_graph())  # open a session
@@ -312,7 +316,7 @@ class BP_NetDecoder:
         llr_into_bp_net = tf.Variable(np.ones([self.v_node_num, self.batch_size], dtype=np.float32), name="llr_into_bp_net")  # 建立了一个矩阵变量（576 * 5000)，576 是码元，5000是每次5000个码元为一个batch
         xe_0 = tf.matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")  # 横向edge初始化(H_x_to_xe0:shape=(2040, 576), llr_into_bp_net:shape=(576, 5000) => (2040, 5000)
         xe_v2c_pre_iter = tf.Variable(np.ones([self.num_all_edges, self.batch_size], dtype=np.float32), name="xe_v2c_pre_iter")  # the v->c messages of the previous iteration, shape=(2040, 5000)
-        xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0, name="xe_v2c_pre_iter_assign")  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
+        xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0)  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
 
         xe_v_sumc, xe_c_sumv = self.multiple_bp_iteration(xe_v2c_pre_iter, xe_0)  # (2040, 5000), (2040, 2040), (2040, 2040), (2040, 5000)
         self.xe_v_sumc = xe_v_sumc
@@ -395,7 +399,7 @@ class BP_NetDecoder:
         LLR = []
         z = 0
         u_coded_bits = []
-        for i in range(600):  # 每一种SNR的训练轮数，原来是 20000
+        for i in range(500):  # 每一种SNR的训练轮数，原来是 20000
             for SNR in SNRset:
                 real_batch_size = batch_size
                 # 需要一个更新输入数据的过程
@@ -424,7 +428,7 @@ class BP_NetDecoder:
 
         # ------------- 保存训练好的神经网络 -----------------
         saver.save(self.sess, self.bp_net_save_dir + self.bp_model)
-        print(self.sess.run(tf.sparse.to_dense(self.V_to_C_params[0])))
+        # print(self.sess.run(tf.sparse.to_dense(self.V_to_C_params[0])))
 
     def generate_inputs(self, G_matrix, batch_size, rng):
         K, N = np.shape(G_matrix)
