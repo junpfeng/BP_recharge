@@ -211,7 +211,7 @@ class BP_NetDecoder:
         # self.cross_entropy = -tf.reduce_sum(tf.multiply(tf.sigmoid(self.logits), tf.log(tf.sigmoid(self.labels))))
 #        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(self.slogits)), 
 #                            tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.slogits)))))
-        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.logits, name="cross_entropy")
+        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.dec_out, name="cross_entropy")
 #        for i in range(self.BP_layers + 2):
 #                self.slogits  = self.odd_layer_out[i]
 #                if 0 == i:
@@ -485,7 +485,7 @@ class BP_NetDecoder:
                 # -tf.reduce_sum(self.llr_into_bp_net * tf.log(self.sigmoid_out))
                 # x1 = self.sess.run(tf.log(self.sigmoid_out))
                 pass
-            if 0 == (i % 10):
+            if 0 == (i % 50):
                 print(z)
             #if 0 == i % 5000 and 0 != i:
             #    saver.save(self.sess, self.bp_net_save_dir + self.bp_model + format("_%d" % i))
