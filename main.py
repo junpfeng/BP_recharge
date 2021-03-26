@@ -77,5 +77,5 @@ elif top_config.function == 'Simulation':
     # if top_config.analyze_res_noise:  # 分析残差噪声
     #     simutimes_for_anal_res_power = int(np.ceil(5e6 / float(top_config.K_code * batch_size)) * batch_size)
     #     ibd.analyze_residual_noise(code, top_config, net_config, simutimes_for_anal_res_power, batch_size, BP_layers)
-    simutimes_range = np.array([np.ceil(1e7 / float(top_config.K_code * batch_size)) * batch_size, np.ceil(1e8 / float(top_config.K_code * batch_size)) * batch_size], np.int32)  #　１ｅ７－１ｅ８
+    simutimes_range = np.array([np.ceil(1e6 / float(top_config.K_code * batch_size)) * batch_size, np.ceil(1e7 / float(top_config.K_code * batch_size)) * batch_size], np.int32)  #　１ｅ７－１ｅ８
     ibd.simulation_colored_noise(code, top_config, net_config, simutimes_range, 1000, batch_size, BP_layers)

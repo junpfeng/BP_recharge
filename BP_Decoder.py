@@ -371,8 +371,10 @@ class BP_NetDecoder:
         self.odd_layer_out.append(
                 tf.transpose(tf.divide(1 - tf.sign(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_0))), 2)))
 
-        xe_v2c_pre_iter = tf.Variable(np.ones([self.num_all_edges, self.batch_size], dtype=np.float32), name="xe_v2c_pre_iter")  # the v->c messages of the previous iteration, shape=(2040, 5000)
-        xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0)  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
+        # xe_v2c_pre_iter = tf.Variable(np.ones([self.num_all_edges, self.batch_size], dtype=np.float32), name="xe_v2c_pre_iter")  # the v->c messages of the previous iteration, shape=(2040, 5000)
+        # xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0)  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
+        xe_v2c_pre_iter_assign=1
+        xe_v2c_pre_iter = xe_0
 
         xe_v_sumc, xe_c_sumv = self.multiple_bp_iteration(xe_v2c_pre_iter, xe_0, llr_into_bp_net)  # (2040, 5000), (2040, 2040), (2040, 2040), (2040, 5000)
         self.xe_v_sumc = xe_v_sumc
@@ -391,6 +393,7 @@ class BP_NetDecoder:
         # sigmoid_out = tf.sigmoid(bp_out_llr)
         # dec_out = tf.transpose(tf.floordiv(1-tf.to_int32(tf.sign(bp_out_llr)), 2), name="output_node_tanspose")
         dec_out = tf.transpose(tf.divide(1-(tf.sign(bp_out_llr)), 2), name="output_node_tanspose")
+        # 这一步操作是解调，由于对数似然比的特性和sign函数的特性，llr>0时，sign(llr)=1,否则=-1，1-sign(llr)=(0,2)，再除以2，就是（0，1）
 
         self.odd_layer_out.append(dec_out)
         return llr_into_bp_net, xe_0, xe_v2c_pre_iter_assign, start_next_iteration, dec_out, logits, bp_out_llr
@@ -404,7 +407,7 @@ class BP_NetDecoder:
         if real_batch_size != self.batch_size:  # padding zeros
             llr_in = np.append(llr_in, np.zeros([self.batch_size-real_batch_size, num_v_node], dtype=np.float32), 0)  # re-create an array and will not influence the value in
             # original llr array.
-        self.sess.run(self.llr_assign, feed_dict={self.llr_placeholder: llr_in})  # llr应该只是数据层
+        y_dec = self.sess.run(self.dec_out, feed_dict={self.llr_placeholder: llr_in}).astype(np.int32)  # llr应该只是数据层
 
         # 每个作用域内 tensor 都需要初始化一下
         # init = tf.global_variables_initializer()
@@ -414,10 +417,10 @@ class BP_NetDecoder:
         # saver = tf.train.Saver()
         # save_dir = "model/bp_model/"
 
-        self.sess.run(self.xe_v2c_pre_iter_assign)  # BP 网络的第一层
+        # self.sess.run(self.xe_v2c_pre_iter_assign)  # BP 网络的第一层
         # for iter in range(0, bp_iter_num-1):
         #     self.sess.run(self.start_next_iteration)  # run start_next_iteration时表示当前一轮BP的输出
-        y_dec = self.sess.run(self.dec_out).astype(np.int32)  # dec_out 则是最终输出层
+        # y_dec = self.sess.run(self.dec_out).astype(np.int32)  # dec_out 则是最终输出层
         # sigmoid_out = self.sess.run(self.sigmoid_out)
         # saver.save(self.sess, save_dir + "bp_model.ckpt")
 
@@ -460,7 +463,7 @@ class BP_NetDecoder:
         LLR = []
         z = 0
         u_coded_bits = []
-        for i in range(10000):  # 每一种SNR的训练轮数，原来是 20000
+        for i in range(50):  # 每一种SNR的训练轮数，原来是 20000
             for SNR in SNRset:
                 real_batch_size = batch_size
                 # 需要一个更新输入数据的过程
@@ -482,7 +485,7 @@ class BP_NetDecoder:
                 # -tf.reduce_sum(self.llr_into_bp_net * tf.log(self.sigmoid_out))
                 # x1 = self.sess.run(tf.log(self.sigmoid_out))
                 pass
-            if 0 == (i % 100):
+            if 0 == (i % 10):
                 print(z)
             #if 0 == i % 5000 and 0 != i:
             #    saver.save(self.sess, self.bp_net_save_dir + self.bp_model + format("_%d" % i))
