@@ -201,7 +201,7 @@ class BP_NetDecoder:
             self.llr_into_bp_net, self.xe_0, self.xe_v2c_pre_iter_assign, self.start_next_iteration, self.dec_out, self.logits, self.bp_out_llr = self.build_trained_bp_network()
         # -------------------------------------------------------------
         # -------------------------------------------------------------
-        self.llr_assign = self.llr_into_bp_net.assign(tf.transpose(self.llr_placeholder))  # transpose the llr matrix to adapt to the matrix operation in BP net decoder
+        # self.llr_assign = self.llr_into_bp_net.assign(tf.transpose(self.llr_placeholder))  # transpose the llr matrix to adapt to the matrix operation in BP net decoder
         # self.llr_assign = self.llr_into_bp_net.assign(tf.transpose(self.llr_into_bp_net))  # transpose the llr matrix to adapt to the matrix operation in BP net decoder.
 
         # self.cross_entropy = -tf.reduce_sum(self.llr_into_bp_net * tf.log(self.sigmoid_out), 1)  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
@@ -361,8 +361,9 @@ class BP_NetDecoder:
     def build_trained_bp_network(self):  # build the network for one BP iteration
         # 还需要构建一段由 u_coded_bits 和 SNR 到 llr 的网络。
         # BP initialization
-        # llr_into_bp_net = tf.placeholder(dtype=tf.float32, shape=[self.v_node_num, self.batch_size], name="llr_into_bp_net_tensor")  # 整个BP网络的输入
-        llr_into_bp_net = tf.Variable(np.ones([self.v_node_num, self.batch_size], dtype=np.float32), name="llr_into_bp_net")  # 建立了一个矩阵变量（576 * 5000)，576 是码元，5000是每次5000个码元为一个batch
+        # llr_into_bp_net = tf.placeholder(dtype=tf.float32, shape=[self.v_node_num, self.batch_size], name="llr_into_bp_net_placeholder")  # 整个BP网络的输入
+        # llr_into_bp_net = tf.Variable(np.ones([self.v_node_num, self.batch_size], dtype=np.float32), name="llr_into_bp_net")  # 建立了一个矩阵变量（576 * 5000)，576 是码元，5000是每次5000个码元为一个batch
+        llr_into_bp_net = tf.transpose(self.llr_placeholder)
         # xe_0 = tf.matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")  # 横向edge初始化(H_x_to_xe0:shape=(2040, 576), llr_into_bp_net:shape=(576, 5000) => (2040, 5000)
         xe_0 = tf.sparse_tensor_dense_matmul(self.H_x_to_xe0, llr_into_bp_net, name="xe_0")
 
@@ -464,6 +465,7 @@ class BP_NetDecoder:
                 real_batch_size = batch_size
                 # 需要一个更新输入数据的过程
                 x_bits, u_coded_bits, s_mod, channel_noise, y_receive, LLR, ch_noise_sigma = lbc.encode_and_transmission(G_matrix, SNR, real_batch_size, noise_io)
+                # LLR = LLR.transpose()
                 # --------------------------------------------------------------------------------------------
                 # x = self.sess.run(self.llr_assign, feed_dict={self.llr_placeholder: LLR})
                 # y = self.sess.run(self.llr_into_bp_net)
@@ -473,7 +475,7 @@ class BP_NetDecoder:
                 # x3 = self.sess.run(self.xe_v_sumc)
                 # self.sess.run()  # 重新修改网络的输入为 llr_in
                 # p = self.sess.run(self.cross_entropy, feed_dict={self.labels: u_coded_bits})
-                x,y,z = self.sess.run([self.llr_assign, self.train_step, self.cross_entropy], feed_dict={self.llr_placeholder: LLR, self.labels: u_coded_bits})
+                y,z = self.sess.run([self.train_step, self.cross_entropy], feed_dict={self.llr_placeholder: LLR, self.labels: u_coded_bits})
 
                 # y = self.sess.run(self.llr_into_bp_net)
                 # x,y = self.sess.run([])
