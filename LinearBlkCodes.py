@@ -5,7 +5,7 @@ import tensorflow as tf
 def encode_and_transmission(G_matrix, SNR, batch_size, noise_io, rng=0):
     K, N = np.shape(G_matrix)
     if rng == 0:
-        x_bits = np.random.randint(0, 1, size=(batch_size, K))
+        x_bits = np.random.randint(0, 2, size=(batch_size, K))
     else:
         x_bits = rng.randint(0, 2, size=(batch_size, K))  # 随机数种子rng用于生产随机的输入码字
     # coding
