@@ -213,16 +213,16 @@ class BP_NetDecoder:
 #                            tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.slogits)))))
 
         for i in range(self.BP_layers + 2):
-                self.slogits  = tf.sigmoid(self.odd_layer_out[i])
+                # self.slogits  = tf.sigmoid(self.odd_layer_out[i])
                 if 0 == i:
 #                        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(s)), tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.odd_layer_out[i])))))
-                        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.slogits, name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
+                        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.odd_layer_out[i], name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
 
 
                 else:
 #        	        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(tf.sigmoid(self.dec_out))), 
 #                            tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(tf.sigmoid(self.dec_out))))))
-                        self.cross_entropy += tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.slogits, name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
+                        self.cross_entropy += tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.odd_layer_out[i], name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
 
            
 ##        self.multi_cross_entropy = tf.divide(self.cross_entropy, self.BP_layers)
