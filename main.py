@@ -49,7 +49,7 @@ code = lbc.LDPC(top_config.N_code, top_config.K_code, top_config.file_G, top_con
 
 batch_size = int(train_config.training_minibatch_size // np.size(train_config.SNR_set_gen_data))
 batch_size //=2
-BP_layers = 25  # BP的层数
+BP_layers = 10  # BP的层数
 if top_config.function == 'GenData':
     # 定义一个噪声生成器，读取的噪声是 [ 576 * 576 ]
     noise_io = DataIO.NoiseIO(top_config.N_code, False, None, top_config.cov_1_2_file) # top_config.cov_1_2_file = Noise/cov_1_2_corr_para_0.5.dat
