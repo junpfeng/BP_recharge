@@ -212,21 +212,21 @@ class BP_NetDecoder:
 #        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(self.slogits)), 
 #                            tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.slogits)))))
 
-#        for i in range(self.BP_layers + 2):
-#                # self.slogits  = tf.sigmoid(self.odd_layer_out[i])
-#                if 0 == i:
-##                        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(s)), tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.odd_layer_out[i])))))
-#                        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.odd_layer_out[i], name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
+#         for i in range(self.BP_layers + 2):
+#                 # self.slogits  = tf.sigmoid(self.odd_layer_out[i])
+#                 if 0 == i:
+# #                        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(s)), tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(self.odd_layer_out[i])))))
+#                         self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.odd_layer_out[i], name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
 #
 #
-#                else:
-##        	        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(tf.sigmoid(self.dec_out))), 
-##                            tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(tf.sigmoid(self.dec_out))))))
-#                        self.cross_entropy += tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.odd_layer_out[i], name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
-#
+#                 else:
+# #        	        self.cross_entropy = tf.reduce_mean(tf.add(tf.multiply(self.slabels, tf.log(tf.sigmoid(self.dec_out))),
+# #                            tf.multiply(tf.add(1.0, -self.slabels), tf.add(1.0, -tf.log(tf.sigmoid(self.dec_out))))))
+#                         self.cross_entropy += tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.odd_layer_out[i], name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
+
            
 ##        self.multi_cross_entropy = tf.divide(self.cross_entropy, self.BP_layers)
-        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.dec_out, name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
+        self.cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.labels, logits=self.logits, name="cross_entroy")  # * 是按元素相乘，u_coded_bits=(5000,6);sigmoid_out=(6,5000)
         self.cross_entropy = tf.reduce_mean(self.cross_entropy)
         self.train_step = tf.train.AdamOptimizer(1e-3).minimize(self.cross_entropy)
 
@@ -320,12 +320,13 @@ class BP_NetDecoder:
             xe_product_temp = tf.multiply(tf.sign(xe_product), -2e-7, name=format("xe_product_temp_%d" % layer))
             xe_pd_modified = tf.add(xe_product, xe_product_temp, name=format("xe_pd_modified_%d" % layer))
             xe_v_sumc = tf.multiply(self.atanh(xe_pd_modified), [2.0], name=format("xe_v_sumc_%d" % layer))
+
             xe_c_sumv = tf.add(xe_0, tf.sparse_tensor_dense_matmul(self.V_to_C_params[layer], xe_v_sumc), name=format("xe_c_sumv_%d" % layer))
             # 存储每轮迭代中的的校验节点 xe_v_sumc
 #            self.odd_layer_out.append(
 #                tf.transpose(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_v_sumc))))
             self.odd_layer_out.append(
-                tf.transpose(tf.divide(1 - tf.sign(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_v_sumc))), 2)))
+                tf.transpose(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_v_sumc))))
 
         return xe_v_sumc, xe_c_sumv  # xe_v_sumc 是每次完成迭代的输出层（校验节点），xe_c_sumv 是这一轮BP的输出，下一轮的输入
 
@@ -370,7 +371,7 @@ class BP_NetDecoder:
 
 #        self.odd_layer_out.append(tf.transpose(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_0))))
         self.odd_layer_out.append(
-                tf.transpose(tf.divide(1 - tf.sign(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_0))), 2)))
+                tf.transpose(tf.add(llr_into_bp_net, tf.sparse_tensor_dense_matmul(self.H_xe_v_sumc_to_y, xe_0))))
 
         # xe_v2c_pre_iter = tf.Variable(np.ones([self.num_all_edges, self.batch_size], dtype=np.float32), name="xe_v2c_pre_iter")  # the v->c messages of the previous iteration, shape=(2040, 5000)
         # xe_v2c_pre_iter_assign = xe_v2c_pre_iter.assign(xe_0)  # 将 xe_0 赋值给 ve_v2c_pre_iter_assign
@@ -396,7 +397,7 @@ class BP_NetDecoder:
         dec_out = tf.transpose(tf.divide(1-(tf.sign(bp_out_llr)), 2), name="output_node_tanspose")
         # 这一步操作是解调，由于对数似然比的特性和sign函数的特性，llr>0时，sign(llr)=1,否则=-1，1-sign(llr)=(0,2)，再除以2，就是（0，1）
 
-        self.odd_layer_out.append(dec_out)
+        self.odd_layer_out.append(logits)
         return llr_into_bp_net, xe_0, xe_v2c_pre_iter_assign, start_next_iteration, dec_out, logits, bp_out_llr
 
     '''
@@ -464,7 +465,7 @@ class BP_NetDecoder:
         LLR = []
         z = 0
         u_coded_bits = []
-        for i in range(500):  # 每一种SNR的训练轮数，原来是 20000
+        for i in range(100):  # 每一种SNR的训练轮数，原来是 20000
             for SNR in SNRset:
                 real_batch_size = batch_size
                 # 需要一个更新输入数据的过程
@@ -494,7 +495,7 @@ class BP_NetDecoder:
 
         # ------------- 保存训练好的神经网络 -----------------
         saver.save(self.sess, self.bp_net_save_dir + self.bp_model)
-        # print(self.sess.run(tf.sparse.to_dense(self.V_to_C_params[0])))
+        print(self.sess.run(tf.sparse.to_dense(self.V_to_C_params[0])))
 
     def generate_inputs(self, G_matrix, batch_size, rng):
         K, N = np.shape(G_matrix)
