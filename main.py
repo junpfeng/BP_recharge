@@ -50,6 +50,8 @@ code = lbc.LDPC(top_config.N_code, top_config.K_code, top_config.file_G, top_con
 batch_size = int(train_config.training_minibatch_size // np.size(train_config.SNR_set_gen_data))
 batch_size //=2
 BP_layers = 10  # BP的层数
+train_epoch = 20000  # train epoch
+use_weight_loss = True
 if top_config.function == 'GenData':
     # 定义一个噪声生成器，读取的噪声是 [ 576 * 576 ]
     noise_io = DataIO.NoiseIO(top_config.N_code, False, None, top_config.cov_1_2_file) # top_config.cov_1_2_file = Noise/cov_1_2_corr_para_0.5.dat
@@ -71,11 +73,11 @@ elif top_config.function == 'TrainConv':
 
 elif top_config.function == 'TrainBP':
     # 训练 BP 网络
-    ibd.train_bp_network(code, top_config, net_config, batch_size, BP_layers)
+    ibd.train_bp_network(code, top_config, net_config, batch_size, BP_layers, train_epoch, use_weight_loss)
 
 elif top_config.function == 'Simulation':
     # if top_config.analyze_res_noise:  # 分析残差噪声
     #     simutimes_for_anal_res_power = int(np.ceil(5e6 / float(top_config.K_code * batch_size)) * batch_size)
     #     ibd.analyze_residual_noise(code, top_config, net_config, simutimes_for_anal_res_power, batch_size, BP_layers)
-    simutimes_range = np.array([np.ceil(1e6 / float(top_config.K_code * batch_size)) * batch_size, np.ceil(1e7 / float(top_config.K_code * batch_size)) * batch_size], np.int32)  #　１ｅ７－１ｅ８
-    ibd.simulation_colored_noise(code, top_config, net_config, simutimes_range, 1000, batch_size, BP_layers)
+    simutimes_range = np.array([np.ceil(8e6 / float(top_config.K_code * batch_size)) * batch_size, np.ceil(8e7 / float(top_config.K_code * batch_size)) * batch_size], np.int32)  #　１ｅ７－１ｅ８
+    ibd.simulation_colored_noise(code, top_config, net_config, simutimes_range, 1000, batch_size, BP_layers, train_epoch, use_weight_loss)

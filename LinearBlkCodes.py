@@ -16,7 +16,8 @@ def encode_and_transmission(G_matrix, SNR, batch_size, noise_io, rng=0):
     # plus the noise
     ch_noise_normalize = noise_io.generate_noise(batch_size)  # 生成均值为0，方差为1的高斯随机噪声矩阵（相干性设为0）
 
-    ch_noise_sigma = np.sqrt(1 / np.power(10, SNR / 10.0) / 2.0)  # SNR = 10*lg(1/(2*sigma^2))
+    #ch_noise_sigma = np.sqrt(1 / np.power(10, SNR / 10.0) / 2.0)  # SNR = 10*lg(1/(2*sigma^2))
+    ch_noise_sigma = np.sqrt(1 / np.power(10, SNR / 10.0))  # SNR = 10*lg(1/(2*sigma^2))
     ch_noise = ch_noise_normalize * ch_noise_sigma  # 利用公式 D(c*x) = c^2*D(x) 来改变噪声的方差
     y_receive = s_mod + ch_noise  # 模拟接收信号
     LLR = y_receive * 2.0 / (ch_noise_sigma * ch_noise_sigma)  # 计算接收信号的对数似然比

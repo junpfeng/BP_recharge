@@ -59,7 +59,7 @@ def denoising_and_calc_LLR_epdf(prob, y_receive, output_pre_decoder, net_in, net
 
 
 # simulation
-def simulation_colored_noise(linear_code, top_config, net_config, simutimes_range, target_err_bits_num, batch_size, BP_layers):
+def simulation_colored_noise(linear_code, top_config, net_config, simutimes_range, target_err_bits_num, batch_size, BP_layers, train_epoch=25, use_weight_loss=False):
 # target_err_bits_num: the simulation stops if the number of bit errors reaches the target.
 # simutimes_range: [min_simutimes, max_simutimes]
 
@@ -78,8 +78,8 @@ def simulation_colored_noise(linear_code, top_config, net_config, simutimes_rang
     if np.size(bp_iter_num) != denoising_net_num + 1:
         print('Error: the length of bp_iter_num is not correct!')
         exit(0)
-    bp_decoder = BP_Decoder.BP_NetDecoder(H_matrix, batch_size, top_config, BP_layers, 0)
-    bp_decoder_after_cnn = BP_Decoder.BP_NetDecoder(H_matrix, batch_size, top_config, BP_layers, 1)
+    bp_decoder = BP_Decoder.BP_NetDecoder(H_matrix, batch_size, top_config, BP_layers, 0, use_weight_loss)
+    # bp_decoder_after_cnn = BP_Decoder.BP_NetDecoder(H_matrix, batch_size, top_config, BP_layers, 1)
     # bp_decoder = bp_decoder_before_cnn  # default
 
     res_N = top_config.N_code
@@ -129,10 +129,16 @@ def simulation_colored_noise(linear_code, top_config, net_config, simutimes_rang
         f_simulation_time = format('%s/bp_model/%s_%s/BP%s/simulation_time(%d_%d)_BP(%s)_BPDNN%s-CNN-BPDNN%s'
                                    % (net_config.model_folder, N, K, bp_decoder.BP_layers, N, K, bp_str, bp_decoder.BP_layers, bp_decoder.BP_layers))
     elif bp_decoder.use_train_bp_net or bp_decoder.train_bp_network:
-        ber_file = format('%s/bp_model/%s_%s/BP%s/BER(%d_%d)_BP(%s)_BP%s'
-                          % (net_config.model_folder, N, K,bp_decoder.BP_layers, N, K, bp_str, bp_decoder.BP_layers))
-        f_simulation_time = format('%s/bp_model/%s_%s/BP%s/simulation_time(%d_%d)_BP(%s)_BP%s'
-                                   % (net_config.model_folder, N, K, bp_decoder.BP_layers, N, K, bp_str,bp_decoder.BP_layers))
+        if use_weight_loss:
+                ber_file = format('%s/bp_model/%s_%s/BP%s/BER(%d_%d)_BP(%s)_BP%s_epoch%s_weight_loss'
+				  % (net_config.model_folder, N, K,bp_decoder.BP_layers, N, K, bp_str, bp_decoder.BP_layers, train_epoch))
+                f_simulation_time = format('%s/bp_model/%s_%s/BP%s/simulation_time(%d_%d)_BP(%s)_BP%s_epch%s_weight_loss'
+					   % (net_config.model_folder, N, K, bp_decoder.BP_layers, N, K, bp_str,bp_decoder.BP_layers, train_epoch))
+        else:
+                ber_file = format('%s/bp_model/%s_%s/BP%s/BER(%d_%d)_BP(%s)_BP%s_epoch%s'
+				  % (net_config.model_folder, N, K,bp_decoder.BP_layers, N, K, bp_str, bp_decoder.BP_layers, train_epoch))
+                f_simulation_time = format('%s/bp_model/%s_%s/BP%s/simulation_time(%d_%d)_BP(%s)_BP%s_epch%s'
+					   % (net_config.model_folder, N, K, bp_decoder.BP_layers, N, K, bp_str,bp_decoder.BP_layers, train_epoch))
 
     else:
         ber_file = format('%s/bp_model/%s_%s/BP%s/BER(%d_%d)_BP(%s)_LLRBP%s'
@@ -461,7 +467,7 @@ def analyze_residual_noise(linear_code, top_config, net_config, simutimes, batch
 
     #  训练BP网络
     # simulation
-def train_bp_network(linear_code, top_config, net_config, batch_size, BP_layers=20):
+def train_bp_network(linear_code, top_config, net_config, batch_size, BP_layers=20, train_epoch=25, use_weight_loss=False):
     # target_err_bits_num: the simulation stops if the number of bit errors reaches the target.
     # simutimes_range: [min_simutimes, max_simutimes]
 
@@ -482,11 +488,11 @@ def train_bp_network(linear_code, top_config, net_config, batch_size, BP_layers=
     if np.size(bp_iter_num) != denoising_net_num + 1:
         print('Error: the length of bp_iter_num is not correct!')
         exit(0)
-    bp_decoder = BP_Decoder.BP_NetDecoder(H_matrix, batch_size, top_config, BP_layers)
+    bp_decoder = BP_Decoder.BP_NetDecoder(H_matrix, batch_size, top_config, BP_layers,0, use_weight_loss)
 
     ## train bp_network
     start = datetime.datetime.now()
-    bp_decoder.train_decode_network(bp_iter_num[0], SNRset, batch_size, ch_noise_normalize, linear_code)  # BP译码传输的本来是LLR，返回的则是对应译码的码字
+    bp_decoder.train_decode_network(bp_iter_num[0], SNRset, batch_size, ch_noise_normalize, linear_code, train_epoch)  # BP译码传输的本来是LLR，返回的则是对应译码的码字
     end = datetime.datetime.now()
     print('Time: %ds' % (end - start).seconds)
     print("end\n")

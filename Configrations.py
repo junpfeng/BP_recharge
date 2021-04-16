@@ -14,8 +14,8 @@ class TopConfig:  # 也就是 生成数据、训练和仿真的 参数和配置�
         self.function = 'Train'
 
         # code 码的信息
-        self.N_code = 576
-        self.K_code = 432
+        self.N_code = 96
+        self.K_code = 48
         # self.N_code = 576
         # self.K_code = 480
         # self.N_code = 240
@@ -66,8 +66,10 @@ class TopConfig:  # 也就是 生成数据、训练和仿真的 参数和配置�
         self.normality_lambda = 1
 
         if self.N_code == 16 and self.K_code == 8:
-            self.SNR_set_gen_data = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3], dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
-            self.eval_SNRs = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3], np.float32)
+            self.SNR_set_gen_data = np.array([0,1,2,3,4,5,6], dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
+            #self.SNR_set_gen_data = np.array([1.5, 2, 2.5, 3], dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
+            self.eval_SNRs = np.array([0,1,2,3,4,5,6], np.float32)
+            #self.eval_SNRs = np.array([1.5, 2, 2.5, 3], np.float32)
             # 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6,
             # 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13
             # self.SNR_set_gen_data = np.array([1,2,3,4,5,6,7,8,9,10]
@@ -79,14 +81,22 @@ class TopConfig:  # 也就是 生成数据、训练和仿真的 参数和配置�
             #                            # 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13,
             #                            # 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20]
             #                           , np.float32)
+        elif self.N_code == 96 and self.K_code == 48:
+            self.SNR_set_gen_data = np.array([4], dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
+            self.eval_SNRs = np.array([4], np.float32)
+            #self.SNR_set_gen_data = np.array([-2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5], dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
+            #self.eval_SNRs = np.array([-2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5], np.float32)
+ 
         else:
             # self.SNR_set_gen_data = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6]
             #                                  , dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
             # self.eval_SNRs = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6]
             #                           , np.float32)
-            self.SNR_set_gen_data = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3]
+            #self.SNR_set_gen_data = np.array([0,0.5,1,1.5,2,2.5,3,3.5,4,4.5]
+            self.SNR_set_gen_data = np.array([3]
                                              , dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
-            self.eval_SNRs = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3]
+            #self.eval_SNRs = np.array([3]
+            self.eval_SNRs = np.array([0,0.5,1,1.5,2,2.5,3,3.5,4,4.5]
                                       , np.float32)
             # self.SNR_set_gen_data = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3], dtype=np.float32)  # 这个修改和 eval_SNRs 是匹配的
             # self.eval_SNRs = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3], np.float32)  # 这个修改和 SNR_set_gen_data 是匹配的
